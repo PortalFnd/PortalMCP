@@ -1,0 +1,52 @@
+{
+  "name": "portalmcp",
+  "version": "1.0.0",
+  "description": "PortalMCP - Universal AI Gateway to Ethereum. Works with Claude, ChatGPT, Gemini, Mistral, Ollama, and any LLM.",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "start:mcp": "node dist/index.js",
+    "start:api": "node dist/adapters/rest-api.js",
+    "dev": "ts-node src/index.ts",
+    "dev:api": "ts-node src/adapters/rest-api.ts",
+    "test": "jest"
+  },
+  "keywords": [
+    "portalmcp",
+    "ethereum",
+    "claude",
+    "mcp",
+    "blockchain",
+    "web3",
+    "defi",
+    "nft",
+    "smart-contracts",
+    "anthropic"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/PortalFnd/portalmcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/PortalFnd/portalmcp/issues"
+  },
+  "homepage": "https://github.com/PortalFnd/portalmcp#readme",
+  "author": "Portal Foundation",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.6.0",
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "dotenv": "^16.0.3",
+    "ethers": "^6.3.0",
+    "solc": "^0.8.19"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.2",
+    "@types/node": "^18.15.11",
+    "jest": "^29.5.0",
+    "ts-jest": "^29.1.0",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.0.4"
+  }
+}
