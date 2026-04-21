@@ -1,131 +1,92 @@
-# PortalMCP Roadmap & Feature Ideas
+# PortalMCP Roadmap
 
-## 🚀 Current Features (v1.0)
+## ✅ v1.2.0 — shipped
 
-### Core Blockchain Operations
-- ✅ ETH balance checking
-- ✅ ERC-20 token operations (create, transfer, balance)
-- ✅ NFT operations (ERC-721 create, mint, ownership)
-- ✅ Smart contract generation with AI
-- ✅ Contract compilation (Solidity → bytecode)
-- ✅ Contract deployment
-- ✅ Token swaps via Uniswap V3
+**Transports**
+- stdio MCP transport (Claude Desktop, Cursor, Windsurf, Cline, …)
+- Streamable HTTP transport (Claude.ai web/mobile, ChatGPT connectors, Gemini, remote agents)
+- Legacy REST / OpenAPI adapter retained for ChatGPT Custom GPT Actions
 
-### Multi-AI Support
-- ✅ Claude Desktop (Native MCP)
-- ✅ OpenAI/ChatGPT (Function Calling)
-- ✅ LangChain (Any LLM provider)
-- ✅ REST API (Universal)
+**MCP surface**
+- 17 tools with `ToolAnnotations` (readOnly / destructive / idempotent / openWorld hints)
+- `outputSchema` + typed `structuredContent` on read tools
+- 1 static resource (`eth://wallet`)
+- 3 resource templates (`eth://balance/{address}`, `eth://tx/{hash}`, `eth://token/{address}`)
+- 2 slash-command prompts (`swap_tokens`, `deploy_erc20`)
 
----
+**Core features**
+- ETH + ERC-20 + ERC-721 + DeFi/staking operations
+- Claude-authored Solidity generation (Anthropic SDK 0.90, Claude Sonnet 4.5)
+- Contract compile → deploy flow (signer-backed or prepare-for-wallet)
+- Universal Uniswap V3 swap (any ERC-20 pair, symbol or address)
 
-## 🎯 Planned Features (v1.1 - v2.0)
+**Multi-chain**
+- Ethereum mainnet + Sepolia + Goerli + Holesky
+- Arbitrum, Optimism, Base, Polygon (mainnet + testnets)
+- Any EVM chain via `ETHEREUM_RPC_URL`
 
-### 🔗 Multi-Chain Support
-- [ ] **Polygon** - Low-cost transactions
-- [ ] **Arbitrum** - L2 scaling
-- [ ] **Optimism** - L2 scaling
-- [ ] **Base** - Coinbase L2
-- [ ] **BSC** - Binance Smart Chain
-- [ ] **Avalanche** - High throughput
-- [ ] **Solana** - Non-EVM chain (separate adapter)
-
-### 💰 Enhanced DeFi
-- [ ] **Multi-DEX routing** - Best price across Uniswap, Sushiswap, 1inch
-- [ ] **Liquidity provision** - Add/remove LP positions
-- [ ] **Yield farming** - Stake LP tokens
-- [ ] **Lending/Borrowing** - Aave, Compound integration
-- [ ] **Flash loans** - Arbitrage opportunities
-- [ ] **MEV protection** - Flashbots integration
-
-### 🖼️ Advanced NFT Features
-- [ ] **Batch minting** - Mint multiple NFTs at once
-- [ ] **NFT marketplace** - List on OpenSea, Blur
-- [ ] **Royalty management** - ERC-2981 support
-- [ ] **NFT metadata** - IPFS pinning integration
-- [ ] **Dynamic NFTs** - On-chain metadata updates
-- [ ] **NFT analytics** - Floor price, rarity scores
-
-### 📊 Analytics & Monitoring
-- [ ] **Portfolio tracking** - All tokens/NFTs in one view
-- [ ] **Price alerts** - Notify on price movements
-- [ ] **Gas optimization** - Suggest best times to transact
-- [ ] **Transaction history** - Full wallet history
-- [ ] **Profit/Loss tracking** - DeFi position P&L
-
-### 🔐 Security Features
-- [ ] **Hardware wallet support** - Ledger, Trezor
-- [ ] **Multi-sig support** - Gnosis Safe integration
-- [ ] **Transaction simulation** - Preview before signing
-- [ ] **Phishing protection** - Contract verification
-- [ ] **Allowance management** - Revoke token approvals
-
-### 🤖 AI Enhancements
-- [ ] **Smart contract auditing** - AI-powered security analysis
-- [ ] **Gas estimation** - Predict transaction costs
-- [ ] **Natural language queries** - "Show me my most valuable NFT"
-- [ ] **Trading strategies** - AI-suggested DeFi moves
-- [ ] **Risk assessment** - Analyze contract risks
-
-### 🔌 Integrations
-- [ ] **ENS support** - Resolve .eth names
-- [ ] **IPFS** - Decentralized storage
-- [ ] **The Graph** - Indexed blockchain data
-- [ ] **Chainlink** - Oracle data feeds
-- [ ] **Snapshot** - DAO governance voting
+**Hardening**
+- Modern `g.alchemy.com` URLs (old `alchemyapi.io` returns 410 — fixed)
+- Placeholder-value detection for env vars
+- Bearer-token auth + CORS on HTTP transport
+- Smoke test (`npm run smoke`) asserting registered surface area
 
 ---
 
-## 💡 Community Requested Features
+## 🎯 v1.3 — near-term
 
-Add your feature requests here or open a GitHub issue!
+- [ ] **Elicitation** — MCP SDK ≥ 1.13 elicitation flow to confirm destructive txs in-chat before broadcast
+- [ ] **Transaction simulation** — `eth_call` dry-run + revert reason decoding before signing
+- [ ] **Helper tools** — `eth_get_gas_price`, `eth_lookup_ens`, `eth_estimate_gas`
+- [ ] **Full `outputSchema` coverage** — add to contract/defi/token/nft tools
+- [ ] **Docker image** + `docker-compose.yml`
 
-### Suggested by Users
-- [ ] _Your feature here_
+## 🚀 v1.4 — DeFi depth
+
+- [ ] **Multi-DEX routing** — 1inch / 0x aggregator in `eth_swap_tokens`
+- [ ] **Read-only lending positions** — Aave v3, Compound v3
+- [ ] **Liquidity provision** — Uniswap V3 mint/burn positions
+- [ ] **Allowance management** — revoke ERC-20 approvals tool
+
+## 🔐 v1.5 — wallets & safety
+
+- [ ] **Hardware wallet signer** — Ledger via node-hid
+- [ ] **Gnosis Safe** integration — queue txs to a multisig
+- [ ] **ERC-4337 account abstraction** — session keys, sponsored gas
+- [ ] **Phishing / approval hygiene** checks built into the swap flow
+
+## 🖼️ v2.0 — NFT + analytics
+
+- [ ] **Batch minting** and **ERC-2981 royalties** in ERC-721 generator
+- [ ] **IPFS pinning** for NFT metadata (Pinata / web3.storage)
+- [ ] **Marketplace listings** — OpenSea Seaport integration
+- [ ] **Portfolio tool** — aggregate ERC-20 + ERC-721 holdings
+- [ ] **Price alerts** via a notification resource
+
+## 🤖 AI extensions (any version)
+
+- [ ] Smart contract security auditor (Claude + slither pipeline)
+- [ ] Sampling — server requests LLM help to summarise tx receipts / logs
+- [ ] Natural-language portfolio queries ("show me my most profitable trade this month")
+
+## 🛠️ Developer experience
+
+- [ ] Python client/SDK
+- [ ] CLI (`portalmcp call <tool> …` for scripting)
+- [ ] Jest suites covering EthereumService + each tool group
+- [ ] GitHub Actions CI (`npm run build && npm run smoke` on PR)
+- [ ] Helm chart for Kubernetes deployments
 
 ---
 
-## 🛠️ Technical Improvements
+## 💡 Community requests
 
-### Performance
-- [ ] Connection pooling for RPC calls
-- [ ] Response caching for read operations
-- [ ] Batch RPC requests
-- [ ] WebSocket subscriptions for real-time updates
-
-### Developer Experience
-- [ ] TypeScript SDK for easy integration
-- [ ] Python SDK
-- [ ] CLI tool for quick operations
-- [ ] Docker container
-- [ ] Helm chart for Kubernetes
-
-### Testing
-- [ ] Comprehensive test suite
-- [ ] Testnet faucet integration
-- [ ] Mock mode for development
-- [ ] CI/CD pipeline
+Open an issue or PR at <https://github.com/PortalFnd/PortalMCP/issues>.
 
 ---
 
-## 📅 Release Timeline
+## Deprecated / removed
 
-| Version | Target | Focus |
-|---------|--------|-------|
-| v1.0 | ✅ Done | Core features, multi-AI support |
-| v1.1 | Q1 2025 | Multi-chain (Polygon, Arbitrum) |
-| v1.2 | Q1 2025 | Enhanced DeFi (multi-DEX, lending) |
-| v1.5 | Q2 2025 | Advanced NFT features |
-| v2.0 | Q2 2025 | Full analytics, security features |
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-Priority areas:
-1. Multi-chain support
-2. Additional DEX integrations
-3. Test coverage
-4. Documentation
+- Old `alchemyapi.io` endpoints (returned HTTP 410) — replaced by modern `g.alchemy.com` URL builder.
+- `@anthropic-ai/sdk@0.6` legacy `completions.create` path — removed in favour of `messages.create` typed API in v0.90+.
+- JSON-Schema-based tool registration loop — every tool now uses Zod raw-shape inputs via `registerTool`.

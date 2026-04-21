@@ -1,274 +1,353 @@
-# PortalMCP - Universal AI Gateway to Ethereum
+# PortalMCP
 
-A multi-platform AI integration layer for Ethereum blockchain. Works with **Claude, ChatGPT, Gemini, LLaMA, Mistral**, and any LangChain-supported model. Deploy contracts, swap tokens, mint NFTs, and more - all through natural language.
+**Universal AI gateway to Ethereum.** Plug any MCP-compatible AI client (Claude Desktop, Claude.ai web, ChatGPT, Gemini, Cursor, Windsurf, Cline, custom agents, …) into the Ethereum blockchain with natural language — check balances, swap tokens, mint NFTs, generate and deploy smart contracts, and more.
 
-## 🌐 Supported AI Platforms
+> **Status:** v1.2.0 — ships both **stdio** and **Streamable HTTP** MCP transports, 17 tools, 1 resource, 3 resource templates, and 2 prompts. Works on Ethereum mainnet and all major L2s (Arbitrum, Optimism, Base, Polygon) plus Sepolia/Goerli/Holesky testnets.
 
-| Platform | Integration | Status |
-|----------|-------------|--------|
-| **Claude Desktop** | Native MCP | ✅ Full Support |
-| **ChatGPT** | REST API / Custom GPT | ✅ Full Support |
-| **Cursor** | Native MCP | ✅ Full Support |
-| **Windsurf** | Native MCP | ✅ Full Support |
-| **OpenAI API** | Function Calling | ✅ Full Support |
-| **Google Gemini** | LangChain | ✅ Full Support |
-| **Mistral** | LangChain | ✅ Full Support |
-| **Ollama** | LangChain | ✅ Full Support |
-| **Any LLM** | REST API | ✅ Full Support |
+---
 
-## Architecture Overview
+## Table of contents
 
+- [Why PortalMCP](#why-portalmcp)
+- [Compatible clients](#compatible-clients)
+- [Features at a glance](#features-at-a-glance)
+- [Quick start](#quick-start)
+- [Client setup](#client-setup)
+  - [Claude Desktop](#claude-desktop-stdio)
+  - [Claude.ai web / mobile](#claudeai-web--mobile-streamable-http)
+  - [Cursor / Windsurf / Cline / Continue](#cursor--windsurf--cline--continue)
+  - [ChatGPT, Gemini, custom agents](#chatgpt-gemini-custom-agents)
+- [Tools, resources, prompts](#tools-resources-prompts)
+- [Configuration](#configuration)
+- [Networks](#networks)
+- [Security](#security)
+- [Development](#development)
+- [Architecture](#architecture)
+- [Roadmap](#roadmap)
+- [License](#license)
+
+---
+
+## Why PortalMCP
+
+Most AI-blockchain integrations lock you to one provider or one client. PortalMCP is a **spec-compliant MCP server** — so the same server, running on your machine or in the cloud, works with every client that speaks Model Context Protocol. One config, many copilots.
+
+- **Non-custodial** — private keys stay on your machine (or your server), never travel.
+- **Live on-chain data** — resources (`eth://wallet`, `eth://balance/{address}`, `eth://tx/{hash}`, `eth://token/{address}`) give clients zero-latency context about chain state.
+- **Safe by default** — every tool declares `readOnlyHint` / `destructiveHint` / `idempotentHint` so clients can show proper confirmation UX before broadcasting.
+- **Structured output** — read tools return typed `structuredContent` matching their declared `outputSchema`.
+
+---
+
+## Compatible clients
+
+| Client | Transport | Notes |
+|---|---|---|
+| Claude Desktop (macOS/Windows) | stdio | One-line config, see below |
+| Claude.ai web + mobile app | Streamable HTTP | Add as "Custom Connector" (Pro/Team/Enterprise) |
+| Claude Code / Claude CLI | stdio or HTTP | Either transport works |
+| Cursor | stdio | Native MCP |
+| Windsurf | stdio | Native MCP |
+| Cline / Continue / Zed AI | stdio | Native MCP |
+| ChatGPT (Team/Enterprise) | Streamable HTTP | MCP connector feature |
+| ChatGPT Custom GPTs | REST (`openapi.json`) | Legacy adapter still shipped |
+| Google Gemini / Vertex Agent Builder | Streamable HTTP | MCP connector |
+| LangChain / LlamaIndex / OpenAI Agents SDK | either | via their MCP client adapters |
+| Any HTTP-capable agent | Streamable HTTP | Plain JSON-RPC + SSE over `/mcp` |
+
+---
+
+## Features at a glance
+
+### 17 tools
+
+**General**
+`eth_get_balance` · `eth_call_contract` · `eth_send_transaction`
+
+**Contracts**
+`eth_generate_contract` (Claude-authored Solidity) · `eth_compile_contract` · `eth_deploy_contract` · `eth_deploy_contract_with_signer`
+
+**ERC-20**
+`eth_create_token` · `eth_get_token_balance` · `eth_transfer_token`
+
+**ERC-721 / NFTs**
+`eth_create_nft_collection` · `eth_mint_nft` · `eth_get_nft_owner`
+
+**DeFi**
+`eth_create_staking_contract` · `eth_stake_tokens` · `eth_swap_tokens` (universal Uniswap V3 swap — any ERC-20 by symbol or address, auto-approval, slippage protection) · `eth_swap_eth_to_usdt` (alias)
+
+### 1 static resource + 3 resource templates
+
+- `eth://wallet` — configured signer address, network, ETH balance
+- `eth://balance/{address}` — live ETH balance for any address
+- `eth://tx/{hash}` — transaction + receipt (status, gas, block, logs, explorer URL)
+- `eth://token/{address}` — ERC-20 metadata (name, symbol, decimals, total supply)
+
+### 2 prompts (slash commands)
+
+- `/swap_tokens` — guided token-swap
+- `/deploy_erc20` — generate → compile → deploy flow
+
+---
+
+## Quick start
+
+```bash
+git clone https://github.com/PortalFnd/PortalMCP.git
+cd PortalMCP/portalmcp
+npm install
+cp .env.example .env
+# fill in .env — at minimum ANTHROPIC_API_KEY, DEPLOYER_PRIVATE_KEY,
+# and ETHEREUM_RPC_URL (or a real ALCHEMY_API_KEY)
+npm run build
+npm run smoke           # verify 17 tools / 1 resource / 3 templates / 2 prompts
+npm start               # stdio transport (for Claude Desktop, Cursor, …)
+# or
+npm run start:http      # Streamable HTTP on http://0.0.0.0:3333/mcp
 ```
-                    ┌─────────────────┐
-                    │   Claude/MCP    │──── Native MCP Protocol
-                    └────────┬────────┘
-                             │
-┌─────────────┐    ┌────────▼────────┐    ┌─────────────────┐
-│  ChatGPT    │───▶│                 │───▶│                 │
-│  Gemini     │    │   PortalMCP     │    │    Ethereum     │
-│  Mistral    │───▶│                 │───▶│   Blockchain    │
-│  Ollama     │    │  (Adapters)     │    │                 │
-└─────────────┘    └─────────────────┘    └─────────────────┘
-       │                   │
-       └── LangChain ──────┘
-       └── REST API ───────┘
-```
 
-PortalMCP bridges the gap between AI and blockchain, allowing you to perform complex Ethereum operations through simple natural language requests with ANY AI model.
+---
 
-## Features
+## Client setup
 
-### Contract Generation & Deployment
-- Generate Solidity code via Claude
-- Compile Solidity to bytecode
-- Deploy to network (user signs via wallet)
+### Claude Desktop (stdio)
 
-### Token Operations (ERC-20)
-- Full ERC-20 creation flow
-- Check token balances
-- Transfer tokens
-
-### NFT Operations
-- Deploy NFT contracts
-- Mint NFTs
-- Check NFT ownership
-
-### DeFi Operations
-- Simple staking contracts
-- Stake tokens
-- DEX interactions
-
-### General Blockchain
-- Get ETH balance
-- Call any contract function
-- Send transactions
-
-## Installation
-
-### Prerequisites
-- Node.js v16 or higher
-- npm or yarn
-- An Ethereum wallet (MetaMask recommended)
-- Access to Claude API
-
-### Setup
-
-1. Clone the repository
-   ```bash
-   git clone https://github.com/PortalFnd/portalmcp.git
-   cd portalmcp
-   ```
-
-2. Install dependencies
-   ```bash
-   npm install
-   ```
-
-3. Create a `.env` file based on `.env.example`
-   ```bash
-   cp .env.example .env
-   ```
-
-4. Add your API keys to the `.env` file
-   ```
-   ANTHROPIC_API_KEY=your_claude_api_key
-   INFURA_API_KEY=your_infura_key
-   # or
-   ALCHEMY_API_KEY=your_alchemy_key
-   ```
-
-5. Build the project
-   ```bash
-   npm run build
-   ```
-
-6. Start the MCP server
-   ```bash
-   npm start
-   ```
-
-## Quick Start by Platform
-
-### 🟣 Claude Desktop (Native MCP)
-
-Add to `claude_desktop_config.json` (`~/Library/Application Support/Claude/` on macOS):
+Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
 
 ```json
 {
   "mcpServers": {
     "portalmcp": {
       "command": "node",
-      "args": ["/absolute/path/to/portalmcp/dist/index.js"],
+      "args": ["/absolute/path/to/PortalMCP/portalmcp/dist/index.js"],
       "env": {
         "ETHEREUM_NETWORK": "mainnet",
-        "INFURA_API_KEY": "your_infura_key",
-        "DEPLOYER_PRIVATE_KEY": "your_private_key"
+        "ETHEREUM_RPC_URL": "https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY",
+        "DEPLOYER_PRIVATE_KEY": "0x...",
+        "ANTHROPIC_API_KEY": "sk-ant-..."
       }
     }
   }
 }
 ```
 
-### 🟢 ChatGPT (Custom GPT)
+Restart Claude Desktop. You should see 17 tools, resources under `eth://`, and two slash commands (`/swap_tokens`, `/deploy_erc20`).
 
-1. Start the REST API server:
-   ```bash
-   npm run start:api
-   ```
+### Claude.ai web / mobile (Streamable HTTP)
 
-2. Create a Custom GPT in ChatGPT
-3. Add an Action with the OpenAPI spec from `http://localhost:3001/openapi.json`
-4. For production, deploy to a public URL and use that instead
+1. Host the HTTP server somewhere reachable over HTTPS. Easiest: run `npm run start:http` behind Caddy/Cloudflare Tunnel/Nginx.
+2. Set `MCP_HTTP_TOKEN=<long-random-string>` so only you can call it.
+3. In Claude.ai: **Settings → Connectors → Add Custom Connector**.
+   - URL: `https://your-host.example.com/mcp`
+   - Auth header: `Authorization: Bearer <MCP_HTTP_TOKEN>`
+4. Available on both web and mobile.
 
-### 🔵 OpenAI Assistants API
+### Cursor / Windsurf / Cline / Continue
 
-```typescript
-import OpenAI from 'openai';
-import { getOpenAITools, executeOpenAIToolCall } from 'portalmcp/adapters';
+All native MCP — add an entry to their MCP servers config pointing at `node /absolute/path/to/dist/index.js` (same stdio command as Claude Desktop).
 
-const openai = new OpenAI();
+### ChatGPT, Gemini, custom agents
 
-// Create assistant with Ethereum tools
-const assistant = await openai.beta.assistants.create({
-  name: 'Ethereum Assistant',
-  model: 'gpt-4-turbo',
-  tools: getOpenAITools()
-});
+**Preferred (MCP connector — ChatGPT Team/Enterprise, Gemini/Vertex Agents):**
+Point at `https://your-host/mcp`, optionally with a Bearer token.
 
-// Handle function calls
-const result = await executeOpenAIToolCall('eth_get_balance', { address: '0x...' });
-```
-
-### 🟡 LangChain (Any LLM Provider)
-
-```typescript
-import { getLangChainTools } from 'portalmcp/adapters';
-import { ChatOpenAI } from '@langchain/openai';
-import { ChatAnthropic } from '@langchain/anthropic';
-import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-
-const tools = getLangChainTools();
-
-// Works with ANY provider!
-const openai = new ChatOpenAI({ model: 'gpt-4-turbo' }).bindTools(tools);
-const claude = new ChatAnthropic({ model: 'claude-3-opus' }).bindTools(tools);
-const gemini = new ChatGoogleGenerativeAI({ model: 'gemini-pro' }).bindTools(tools);
-```
-
-### 🟠 REST API (Universal)
-
+**Legacy REST (ChatGPT Custom GPT Actions, any HTTP agent):**
 ```bash
-# Start server
 npm run start:api
-
-# Check balance
-curl http://localhost:3001/eth/balance/0x742d35Cc6634C0532925a3b844Bc9e7595f...
-
-# Swap tokens
-curl -X POST http://localhost:3001/swap \
-  -H "Content-Type: application/json" \
-  -d '{"tokenIn":"ETH","tokenOut":"USDT","amount":"0.01"}'
-
-# Get OpenAPI spec (for any integration)
-curl http://localhost:3001/openapi.json
+# OpenAPI spec: http://localhost:3001/openapi.json
 ```
 
-> **Note:** Replace paths and keys with your actual values. For testnet development, change `ETHEREUM_NETWORK` to `sepolia`.
+---
 
-## Example Conversations
+## Tools, resources, prompts
 
-### Creating a Token
+### Tool cheatsheet
 
-**User**: "Create an ERC-20 token called 'MyToken' with symbol 'MTK' and supply of 1 million"
+| Tool | Action | Signer required? |
+|---|---|---|
+| `eth_get_balance` | ETH balance for any address / default wallet | No |
+| `eth_call_contract` | Read-only call against any ABI | No |
+| `eth_send_transaction` | Prepare a generic unsigned tx | No (prep only) |
+| `eth_generate_contract` | Claude-authored Solidity | No (needs ANTHROPIC_API_KEY) |
+| `eth_compile_contract` | solc compile → bytecode + ABI | No |
+| `eth_deploy_contract` | Prepare deployment tx for external wallet | No |
+| `eth_deploy_contract_with_signer` | Deploy directly using `DEPLOYER_PRIVATE_KEY` | **Yes** |
+| `eth_create_token` | Generate ERC-20 Solidity | No |
+| `eth_get_token_balance` | ERC-20 balance | No |
+| `eth_transfer_token` | Transfer ERC-20 (sign+send by default) | Yes (unless `executeTransaction=false`) |
+| `eth_create_nft_collection` | Generate ERC-721 Solidity | No |
+| `eth_mint_nft` | Prepare mint / safeMint / mintWithURI | No (prep only) |
+| `eth_get_nft_owner` | `ownerOf()` lookup | No |
+| `eth_create_staking_contract` | Generate staking Solidity | No |
+| `eth_stake_tokens` | Prepare approve + stake txs | No (prep only) |
+| `eth_swap_tokens` | Uniswap V3 swap (any pair, executes by default) | Yes |
+| `eth_swap_eth_to_usdt` | Alias for ETH→USDT convenience | Yes |
 
-**Claude** (using MCP tools):
-1. Uses `eth_generate_contract` to create Solidity code
-2. Shows you the code for review
-3. Uses `eth_deploy_contract` after your approval
-4. Returns contract address and details
+### Example conversations
 
-### Checking Balances
+**Deploy a token from scratch**
+> "Deploy an ERC-20 called PortalToken (PRTL) with initial supply 1,000,000."
 
-**User**: "What's my USDC balance on Ethereum?"
+Claude runs `eth_generate_contract` → shows code → `eth_compile_contract` → `eth_deploy_contract_with_signer` → returns the contract address and Etherscan link.
 
-**Claude**: Uses `eth_get_token_balance` and responds: "Your USDC balance is 1,250.50 USDC"
+**Universal swap**
+> "Swap 0.01 ETH for USDC."
 
-### NFT Creation
+Claude calls `eth_swap_tokens { tokenIn:"ETH", tokenOut:"USDC", amount:"0.01" }` which approves (if needed) and executes via Uniswap V3.
 
-**User**: "Deploy an NFT collection called 'Digital Art' and mint token #1 to my address"
+**Ask about any address**
+> "What's the balance of vitalik.eth?" *(client resolves ENS, then attaches the `eth://balance/0xd8dA…` resource)*
 
-**Claude**: 
-1. Uses `eth_create_nft_collection`
-2. Uses `eth_mint_nft` 
-3. Provides transaction hashes and opensea links
+---
 
-## Security Model
+## Configuration
 
-1. **Non-custodial**: Never handle private keys
-2. **User approval**: All transactions require user wallet signature
-3. **Code review**: Show generated contracts before deployment
-4. **Network isolation**: Support testnets for development
+All configuration is via environment variables (`.env` file or host env). See `.env.example` for the full list.
 
-## Available MCP Tools
+| Var | Required | Purpose |
+|---|---|---|
+| `ETHEREUM_NETWORK` | no (default `mainnet`) | `mainnet`, `sepolia`, `holesky`, `arbitrum`, `optimism`, `base`, `polygon`, … |
+| `ETHEREUM_RPC_URL` | preferred | Full JSON-RPC URL (overrides Infura/Alchemy key-based setup) |
+| `ALCHEMY_API_KEY` | alt | Key only — PortalMCP builds the modern `g.alchemy.com` URL |
+| `INFURA_API_KEY` | alt | Infura project ID |
+| `DEPLOYER_PRIVATE_KEY` | for writes | `0x`-prefixed hex — enables signer-backed tools (swap/transfer/deploy) |
+| `ANTHROPIC_API_KEY` | for `eth_generate_contract` | Claude API key |
+| `ANTHROPIC_MODEL` | no | Override default `claude-sonnet-4-5-20250929` |
+| `MCP_HTTP_PORT` | no (default `3333`) | HTTP transport port |
+| `MCP_HTTP_HOST` | no (default `0.0.0.0`) | HTTP transport bind address |
+| `MCP_HTTP_TOKEN` | recommended for HTTP | Bearer token required on every request |
+| `MCP_HTTP_CORS_ORIGIN` | no (default `*`) | Restrict CORS origin |
+| `GAS_PRICE_MULTIPLIER` | no (default `1.1`) | Gas price padding |
 
-### Contract Operations
-- `eth_generate_contract` - Generate Solidity code via Claude
-- `eth_compile_contract` - Compile Solidity to bytecode
-- `eth_deploy_contract` - Deploy to network
+**Placeholder detection:** any env value starting with `your_`, `replace_`, `xxx`, `changeme`, `example`, `placeholder`, or `<…>` is treated as unset. Stops silent misconfigurations dead.
 
-### Token Operations
-- `eth_create_token` - Create ERC-20 token
-- `eth_get_token_balance` - Check token balance
-- `eth_transfer_token` - Transfer tokens
+---
 
-### NFT Operations
-- `eth_create_nft_collection` - Create NFT collection
-- `eth_mint_nft` - Mint NFT
-- `eth_get_nft_owner` - Check NFT ownership
+## Networks
 
-### DeFi Operations
-- `eth_create_staking_contract` - Create staking contract
-- `eth_stake_tokens` - Stake tokens
-- `eth_swap_tokens` - Swap tokens on DEX
+Out of the box:
 
-### General Operations
-- `eth_get_balance` - Get ETH balance
-- `eth_call_contract` - Call contract function
-- `eth_send_transaction` - Send transaction
+- **L1:** mainnet, sepolia, goerli, holesky
+- **L2:** arbitrum + arbitrum-sepolia, optimism + optimism-sepolia, base + base-sepolia, polygon + polygon-amoy
+
+Swap networks by setting `ETHEREUM_NETWORK` or point at any RPC via `ETHEREUM_RPC_URL` (works for any EVM chain — BSC, Avalanche, Linea, zkSync, etc.).
+
+---
 
 ## Security
 
-⚠️ **Important Security Notes:**
+- **Keep `.env` private.** It's in `.gitignore`; never commit it.
+- **`DEPLOYER_PRIVATE_KEY` is a loaded gun.** Anyone with it fully controls that wallet. Prefer a dedicated "agent wallet" with only the funds you're willing to risk.
+- **Always set `MCP_HTTP_TOKEN`** when exposing the HTTP endpoint beyond localhost. Put a TLS-terminating reverse proxy in front.
+- **Testnet first.** Use `sepolia` for development; switch to mainnet only after verifying the flow.
+- **Tool annotations** (`destructiveHint`, `idempotentHint`) let clients prompt for confirmation before broadcasting — don't auto-approve destructive tools in your client settings.
+- **Contract review.** `eth_generate_contract` is a starting point, not an audit. Review and test any generated Solidity before deploying.
 
-- **Never commit your `.env` file** - It contains sensitive API keys and private keys
-- **Use testnets first** - Always test on Sepolia before mainnet
-- **Review transactions** - Always review transaction details before signing
-- **Private key safety** - The `DEPLOYER_PRIVATE_KEY` gives full control over that wallet
+---
+
+## Development
+
+```bash
+npm install
+npm run dev          # stdio, ts-node hot-reload
+npm run dev:http     # Streamable HTTP, ts-node
+npm run build        # tsc → dist/
+npm run smoke        # spawn stdio server + assert tools/resources/prompts
+npm test             # Jest (add more tests — contributions welcome)
+```
+
+### Scripts
+
+| Script | What it does |
+|---|---|
+| `npm start` | stdio MCP server (production) |
+| `npm run start:http` | Streamable HTTP MCP server (production) |
+| `npm run start:api` | Legacy REST API (for ChatGPT Actions / non-MCP clients) |
+| `npm run dev` | stdio + ts-node |
+| `npm run dev:http` | HTTP + ts-node |
+| `npm run dev:api` | REST + ts-node |
+| `npm run smoke` | Registration smoke test |
+
+### Repo layout
+
+```
+portalmcp/
+├── src/
+│   ├── index.ts              # stdio entrypoint
+│   ├── mcp-http.ts           # Streamable HTTP entrypoint
+│   ├── server-factory.ts     # createPortalServer() — shared wiring
+│   ├── smoke-test.ts         # CI registration check
+│   ├── tools/                # tool modules (general, contracts, defi, tokens, nfts)
+│   ├── blockchain/           # EthereumService, CompilerService
+│   ├── claude/               # ContractGenerator (Anthropic SDK)
+│   ├── contracts/            # Solidity templates
+│   └── adapters/             # Legacy REST / LangChain / OpenAI adapters
+├── dist/                     # tsc output
+├── .env.example
+└── package.json
+```
+
+---
+
+## Architecture
+
+```
+          stdio                               Streamable HTTP (SSE)
+┌─────────────────────┐                ┌───────────────────────────┐
+│  Claude Desktop     │                │  Claude.ai web/mobile     │
+│  Cursor, Windsurf   │                │  ChatGPT, Gemini          │
+│  Cline, Continue    │                │  Custom agents            │
+└──────────┬──────────┘                └─────────────┬─────────────┘
+           │                                         │
+           │        ┌──────────────────────┐         │
+           └───────▶│   PortalMCP server   │◀────────┘
+                    │  (server-factory.ts) │
+                    └──────────┬───────────┘
+                               │
+       ┌───────────────────────┼───────────────────────┐
+       ▼                       ▼                       ▼
+  EthereumService          Uniswap V3              Anthropic
+  (ethers v6 +            (eth_swap_tokens)      (eth_generate_contract)
+   Alchemy/Infura/
+   custom RPC)
+```
+
+---
+
+## Roadmap
+
+### Shipped ✅
+- MCP SDK 1.29 — stdio + Streamable HTTP transports
+- 17 tools, 1 resource, 3 resource templates, 2 prompts
+- Tool annotations + `outputSchema` on read tools
+- Universal Uniswap V3 swap (any ERC-20 pair)
+- Multi-chain support (Ethereum, Arbitrum, Optimism, Base, Polygon + testnets)
+- Anthropic SDK 0.90 + Claude Sonnet 4.5 default
+- Placeholder detection for env vars
+- Modern `g.alchemy.com` endpoints (old alchemyapi.io returns 410 — fixed)
+- Smoke test for CI
+- Legacy REST adapter retained for ChatGPT Custom GPTs
+
+### In progress / next
+- [ ] Elicitation (confirm before broadcasting destructive txs)
+- [ ] `eth_get_gas_price`, `eth_lookup_ens` helper tools
+- [ ] More `outputSchema` coverage across contract/defi/token/nft tools
+- [ ] Transaction simulation (eth_call + revert reason decoding) before broadcast
+- [ ] ERC-4337 account abstraction / session keys
+- [ ] Multi-DEX routing (1inch, 0x aggregator) for `eth_swap_tokens`
+- [ ] Read-only helpers for Aave / Compound positions
+- [ ] Hardware-wallet signer adapter (Ledger)
+- [ ] Docker image + Helm chart
+- [ ] Python SDK / CLI for non-MCP usage
+
+---
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+PRs welcome! Priority areas: additional tools, more `outputSchema` coverage, Docker packaging, Python client, and test coverage. Open an issue first for non-trivial changes.
+
+---
 
 ## License
 
-MIT
+[MIT](./LICENSE) © Portal Foundation

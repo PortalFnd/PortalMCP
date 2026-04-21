@@ -1,11 +1,14 @@
-import { Anthropic } from '@anthropic-ai/sdk';
+import Anthropic from '@anthropic-ai/sdk';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Initialize Anthropic client
+// Model can be overridden via env; default to the latest Sonnet at build time.
+const CLAUDE_MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5-20250929';
+
+// Initialize Anthropic client (SDK 0.90+ uses default export)
 const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
+  apiKey: process.env.ANTHROPIC_API_KEY
 });
 
 /**
@@ -32,30 +35,18 @@ export async function generateContractWithClaude(
   const prompt = `Generate ${contractTypeStr} Solidity smart contract based on this description:\n\n${description}\n${featuresStr}\n\nRequirements:\n\n1. Use the latest Solidity version (0.8.x)\n2. Follow best practices for security and gas optimization\n3. Include clear comments for all functions and complex logic\n4. Implement proper access control mechanisms\n5. Validate all inputs\n6. Include events for important state changes\n7. Handle edge cases appropriately\n\nOnly respond with the complete Solidity code, no explanations or other text.`;
 
   try {
-    let responseText = '';
-    
-    // We need to handle both v0.6.0 (and older) API and newer API
-    if (typeof (anthropic as any).completions === 'object') {
-      // Old API style
-      const oldApiResponse = await (anthropic as any).completions.create({
-        prompt: `\n\nHuman: ${prompt}\n\nAssistant:`,
-        model: 'claude-3-opus-20240229',
-        max_tokens_to_sample: 4000,
-        temperature: 0.2,
-      });
-      responseText = oldApiResponse.completion;
-    } else {
-      // New API style (v0.6.0+)
-      const newApiResponse = await (anthropic as any).messages.create({
-        model: 'claude-3-opus-20240229',
-        max_tokens: 4000,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.2,
-      });
-      responseText = newApiResponse.content[0]?.text || '';
-    }
-    
-    // Extract just the Solidity code
+    const response = await anthropic.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 4000,
+      temperature: 0.2,
+      messages: [{ role: 'user', content: prompt }]
+    });
+
+    // Concatenate all text blocks (new SDK returns content as a typed array).
+    const responseText = response.content
+      .map(block => (block.type === 'text' ? block.text : ''))
+      .join('');
+
     return extractSolidityCode(responseText);
   } catch (error) {
     console.error('Error generating contract with Claude:', error);

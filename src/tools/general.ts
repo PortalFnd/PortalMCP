@@ -9,8 +9,15 @@ export function registerGeneralTools(server: any) {
   // ETH Balance Tool
   server.registerTool('eth_get_balance', {
     description: 'Get ETH balance for an Ethereum address or the default signer wallet',
+    annotations: { title: 'Get ETH Balance', readOnlyHint: true, openWorldHint: true },
     inputSchema: {
       address: z.string().optional().describe('Ethereum address to check balance for (optional if using default wallet)')
+    },
+    outputSchema: {
+      balance: z.string().describe('ETH balance as a decimal string'),
+      address: z.string().describe('Address the balance was fetched for'),
+      network: z.string().describe('Ethereum network'),
+      isDefaultWallet: z.boolean().describe('Whether the configured signer wallet was used')
     }
   }, async ({ address }) => {
     try {
@@ -43,6 +50,7 @@ export function registerGeneralTools(server: any) {
   // Call Contract Tool
   server.registerTool('eth_call_contract', {
     description: 'Call a read-only function on an Ethereum smart contract',
+    annotations: { title: 'Call Contract (read)', readOnlyHint: true, openWorldHint: true },
     inputSchema: {
       contractAddress: z.string().describe('Address of the contract to call'),
       functionName: z.string().describe('Name of the function to call'),
@@ -97,6 +105,7 @@ export function registerGeneralTools(server: any) {
   // Send Transaction Tool
   server.registerTool('eth_send_transaction', {
     description: 'Prepare a generic transaction to be signed by the user\'s wallet',
+    annotations: { title: 'Prepare Transaction', readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
     inputSchema: {
       to: z.string().describe('Recipient address of the transaction'),
       from: z.string().describe('Sender address of the transaction'),
